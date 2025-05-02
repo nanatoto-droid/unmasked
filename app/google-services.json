@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "491200462621",
+    "project_id": "unmasked-4782e",
+    "storage_bucket": "unmasked-4782e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:491200462621:android:72acf2f26f20bf261debf4",
+        "android_client_info": {
+          "package_name": "com.imani.unmasked"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAW7I9R5OK6gL8xN4b9zYrCZRktbSL0pmw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
