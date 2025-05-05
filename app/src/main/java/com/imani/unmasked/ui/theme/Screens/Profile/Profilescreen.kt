@@ -21,7 +21,9 @@ import coil.compose.rememberImagePainter
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import com.imani.unmasked.ui.theme.Screens.Home.PostItem
+import com.imani.unmasked.data.AuthViewModel
+import com.imani.unmasked.model.Post
+import com.imani.unmasked.ui.theme.Screens.feed.PostItem
 
 @Composable
 fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController) {
@@ -47,20 +49,23 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
             TopAppBar(
                 title = { Text("Profile") },
                 actions = {
-                    IconButton (onClick = {
-                        authViewModel.logout()
+                    IconButton(onClick = {
+                        authViewModel.signOut()
                         navController.navigate("auth") {
                             popUpTo("feed") { inclusive = true }
                         }
                     }) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Sign out")
+                        Icon(Icons.Default.ExitToApp,
+                            contentDescription = "Sign out")
                     }
                 }
             )
         }
     ) {
         Column(modifier = Modifier.padding(it)) {
-            Text(text = "Logged in as: $email", style = MaterialTheme.typography, modifier = Modifier.padding(16.dp))
+            Text(text = "Logged in as: $email",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(16.dp))
 
             LazyColumn {
                 items(posts) { post ->

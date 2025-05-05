@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.imani.unmasked.ui.theme.Screens.createpost
 
 import android.net.Uri
@@ -6,8 +8,20 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.rememberImagePainter
@@ -16,6 +30,8 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
+import com.imani.unmasked.data.AuthViewModel
+
 import java.util.*
 
 @Composable
@@ -29,10 +45,10 @@ fun CreatePostScreen(authViewModel: AuthViewModel, navController: NavHostControl
         imageUri = it
     }
 
-    Scaffold(
+    Scaffold  (
         topBar = { TopAppBar(title = { Text("New Post") }) },
         floatingActionButton = {
-            FloatingActionButton(
+            FloatingActionButton (
                 onClick = {
                     if (imageUri != null) {
                         loading = true
@@ -44,7 +60,7 @@ fun CreatePostScreen(authViewModel: AuthViewModel, navController: NavHostControl
                 },
                 enabled = !loading
             ) {
-                Icon(Icons.Default.Check, contentDescription = "Post")
+                Icon(Icons.Default.CheckCircle, contentDescription = "Post")
             }
         }
     ) {
@@ -61,7 +77,7 @@ fun CreatePostScreen(authViewModel: AuthViewModel, navController: NavHostControl
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Button(onClick = { launcher.launch("image/*") }) {
+            Button (onClick = { launcher.launch("image/*") }) {
                 Text("Pick Image")
             }
 
@@ -108,3 +124,4 @@ fun uploadPost(text: String, imageUri: Uri, anonymous: Boolean, onComplete: () -
         }
     }
 }
+

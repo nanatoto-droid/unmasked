@@ -1,7 +1,6 @@
 plugins {
-//    id ("com.android.application")
-//    id ("org.jetbrains.kotlin.android")
-//    id ("com.google.gms.google-services")
+
+
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
@@ -15,7 +14,7 @@ android {
 
     defaultConfig {
         applicationId = "com.imani.unmasked"
-        minSdk = 21
+        minSdk = 23
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -47,11 +46,12 @@ android {
 dependencies {
     // Compose dependencies
     implementation (libs.ui)
+    implementation(libs.material)
     implementation (libs.androidx.navigation.compose)
-    implementation ("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    implementation (libs.androidx.lifecycle.runtime.ktx.v270)
     implementation (libs.androidx.activity.compose.v182)
     implementation (libs.coil.compose)
-
+    implementation(libs.imagepicker)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
