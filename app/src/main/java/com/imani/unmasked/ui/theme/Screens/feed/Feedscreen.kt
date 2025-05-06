@@ -1,5 +1,6 @@
 package com.imani.unmasked.ui.theme.Screens.feed
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.rememberImagePainter
 import com.google.android.material.bottomnavigation.BottomNavigationItemView
-import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.bottomnavigation.BottomNavigationMenuView
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -37,15 +38,54 @@ import com.google.firebase.storage.ktx.storage
 import com.imani.unmasked.data.AuthViewModel
 import com.imani.unmasked.model.Post
 import com.imani.unmasked.model.PostViewModel
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import com.google.firebase.firestore.Query
+
+@Composable
+fun FeedScreen() {
+    val posts = remember { mutableStateListOf<Post>() }
+    val refreshing = remember { mutableStateOf(false) }
+
+    fun loadPosts() {
+        refreshing.value = true
+        Firebase.firestore.collection("posts")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .addSnapshotListener { value, error ->
+                posts.clear()
+                value?.forEach {
+                    val post = it.toObject(Post::class.java).copy(id = it.id)
+                    posts.add(post)
+                }
+                refreshing.value = false
+            }
+    }
+
+    LaunchedEffect(Unit) { loadPosts() }
+
+    SwipeRefresh(
+        state = rememberSwipeRefreshState(isRefreshing = refreshing.value),
+        onRefresh = { loadPosts() }
+    ) {
+        LazyColumn {
+            items(posts) { post ->
+                PostItem(post)
+            }
+        }
+    }
+}
 
 
+
+
+@SuppressLint("RestrictedApi")
 @Composable
 fun FeedScreen(authViewModel: AuthViewModel, postViewModel: PostViewModel, navController: NavHostController) {
     val posts by postViewModel.posts.collectAsState()
 
     Scaffold (
         bottomBar = {
-            BottomNavigation {
+            BottomNavigationView {
                 BottomNavigationItemView(
                     selected = true,
                     onClick = { navController.navigate("feed") },
@@ -85,7 +125,7 @@ fun PostItem(post: Post) {
     var liked by remember { mutableStateOf(post.likes.contains(userId)) }
     var commentText by remember { mutableStateOf("") }
 
-    Card (
+    Card(
         modifier = Modifier
             .padding(12.dp)
             .fillMaxWidth()
@@ -94,132 +134,140 @@ fun PostItem(post: Post) {
         backgroundColor = Color.White
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-        Column(modifier = Modifier
-            .padding(8.dp)) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .padding(8.dp)
             ) {
-                if (post.anonymous) {
-                    // Just show "Anonymous" without click
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                ) {
+                    if (post.anonymous) {
+                        // Just show "Anonymous" without click
+                        Text(
+                            text = "Anonymous",
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                    } else {
+                        // Show username (clickable in future, optional)
+                        Text(
+                            text = post.username,
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+
+                    // Show Delete button only if I own the post
+                    if (post.userId == userId) {
+                        IconButton(onClick = {
+                            deletePost(post) {
+
+                            }
+                        }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete")
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Image(
+                    painter = rememberImagePainter(post.imageUrl),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = post.text)
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Like button
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    IconButton(onClick = {
+                        toggleLike(post.id, userId, liked)
+                        liked = !liked
+                    }) {
+                        Icon(
+                            imageVector = if (liked) Icons.Default.Favorite
+                            else Icons.Default.FavoriteBorder,
+                            contentDescription = "Like"
+                        )
+                    }
                     Text(
-                        text = "Anonymous",
-                        style = MaterialTheme.typography.headlineMedium
-                    )
-                } else {
-                    // Show username (clickable in future, optional)
-                    Text(
-                        text = post.username,
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        text = "${
+                            post.likes.size + if (liked && !post.likes.contains(userId)) 1
+                            else 0
+                        } likes"
                     )
                 }
 
+                // Comments
+                post.comments.forEach {
+                    val displayName = if (post.anonymous) "Anonymous"
+                    else it.username
+                    Text(text = "$displayName: ${it.text}")
+                }
 
-                // Show Delete button only if I own the post
-                if (post.userId == userId) {
-                    IconButton(onClick = {
-                        deletePost(post) {
-
+                // Add Comment
+                Row {
+                    OutlinedTextField(
+                        value = commentText,
+                        onValueChange = { commentText = it },
+                        label = { Text("Add a comment...") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    Button(onClick = {
+                        if (commentText.isNotBlank()) {
+                            addComment(post.id, userId, user?.email ?: "Unknown", commentText)
+                            commentText = ""
                         }
                     }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete")
+                        Text("Post")
                     }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-            Image(
-                painter = rememberImagePainter(post.imageUrl),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = post.text)
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Like button
-            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                IconButton(onClick = {
-                    toggleLike(post.id, userId, liked)
-                    liked = !liked
-                }) {
-                    Icon(
-                        imageVector = if (liked) Icons.Default.Favorite
-                        else Icons.Default.FavoriteBorder,
-                        contentDescription = "Like"
-                    )
-                }
-                Text(text = "${post.likes.size + if (liked && !post.likes.contains(userId)) 1 
-                else 0} likes")
-            }
-
-            // Comments
-            post.comments.forEach {
-                val displayName = if (post.anonymous) "Anonymous"
-                else it.username
-                Text(text = "$displayName: ${it.text}")
-            }
-
-            // Add Comment
-            Row {
-                OutlinedTextField(
-                    value = commentText,
-                    onValueChange = { commentText = it },
-                    label = { Text("Add a comment...") },
-                    modifier = Modifier.weight(1f)
-                )
-                Button(onClick = {
-                    if (commentText.isNotBlank()) {
-                        addComment(post.id, userId, user?.email ?: "Unknown", commentText)
-                        commentText = ""
-                    }
-                }) {
-                    Text("Post")
                 }
             }
         }
     }
-}
 
-fun toggleLike(postId: String, userId: String, liked: Boolean) {
-    val postRef = Firebase.firestore
-        .collection("posts")
-        .document(postId)
-    Firebase.firestore.runTransaction { transaction ->
-        val snapshot = transaction.get(postRef)
-        val currentLikes = snapshot.get("likes") as? List<String> ?: emptyList()
-        val updatedLikes = if (liked) currentLikes - userId
-        else currentLikes + userId
-        transaction.update(postRef, "likes", updatedLikes)
+    fun toggleLike(postId: String, userId: String, liked: Boolean) {
+        val postRef = Firebase.firestore
+            .collection("posts")
+            .document(postId)
+        Firebase.firestore.runTransaction { transaction ->
+            val snapshot = transaction.get(postRef)
+            val currentLikes = snapshot.get("likes") as? List<String> ?: emptyList()
+            val updatedLikes = if (liked) currentLikes - userId
+            else currentLikes + userId
+            transaction.update(postRef, "likes", updatedLikes)
+        }
     }
-}
 
-fun addComment(postId: String, userId: String, username: String, text: String) {
-    val comment = mapOf(
-        "userId" to userId,
-        "username" to username,
-        "text" to text,
-        "timestamp" to System.currentTimeMillis() / 1000
-    )
-    val postRef = Firebase.firestore.collection("posts").document(postId)
-    Firebase.firestore.runTransaction { transaction ->
-        val snapshot = transaction.get(postRef)
-        val currentComments = snapshot.get("comments") as? List<Map<String, Any>> ?: emptyList()
-        val updatedComments = currentComments + comment
-        transaction.update(postRef, "comments", updatedComments)
+    fun addComment(postId: String, userId: String, username: String, text: String) {
+        val comment = mapOf(
+            "userId" to userId,
+            "username" to username,
+            "text" to text,
+            "timestamp" to System.currentTimeMillis() / 1000
+        )
+        val postRef = Firebase.firestore.collection("posts").document(postId)
+        Firebase.firestore.runTransaction { transaction ->
+            val snapshot = transaction.get(postRef)
+            val currentComments = snapshot.get("comments") as? List<Map<String, Any>> ?: emptyList()
+            val updatedComments = currentComments + comment
+            transaction.update(postRef, "comments", updatedComments)
+        }
     }
-}
-fun deletePost(post: Post, onComplete: () -> Unit) {
-    // 1. Delete image from Storage
-    val imageRef = Firebase.storage.getReferenceFromUrl(post.imageUrl)
-    imageRef.delete().addOnSuccessListener {
-        // 2. Delete Firestore post
-        Firebase.firestore.collection("posts").document(post.id).delete()
-            .addOnSuccessListener { onComplete() }
+
+    fun deletePost(post: Post, onComplete: () -> Unit) {
+        // 1. Delete image from Storage
+        val imageRef = Firebase.storage.getReferenceFromUrl(post.imageUrl)
+        imageRef.delete().addOnSuccessListener {
+            // 2. Delete Firestore post
+            Firebase.firestore.collection("posts").document(post.id).delete()
+                .addOnSuccessListener { onComplete() }
+        }
     }
 }

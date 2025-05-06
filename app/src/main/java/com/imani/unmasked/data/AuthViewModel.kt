@@ -1,19 +1,10 @@
 package com.imani.unmasked.data
 
-import android.app.ProgressDialog
-import android.content.Context
-import android.widget.Toast
+
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
-import com.imani.unmasked.navigation.ROUTE_HOME
-import com.imani.unmasked.navigation.ROUTE_LOGIN
-import com.imani.unmasked.navigation.ROUTE_REGISTER
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 
 
 
