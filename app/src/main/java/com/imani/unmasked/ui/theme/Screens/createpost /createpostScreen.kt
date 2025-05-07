@@ -42,19 +42,23 @@ fun CreatePostScreen(authViewModel: AuthViewModel, navController: NavHostControl
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    if (imageUri != null && text.isNotBlank()) {
+                    if (!loading && imageUri != null && text.isNotBlank()) {
                         loading = true
                         uploadPost(text, imageUri!!, anonymous) {
                             loading = false
                             navController.popBackStack()
                         }
                     }
-                },
-                enabled = !loading && imageUri != null && text.isNotBlank()
+                }
             ) {
-                Icon(Icons.Default.CheckCircle, contentDescription = "Post")
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "Post",
+                    tint = if (!loading && imageUri != null && text.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                )
             }
         }
+
     ) { innerPadding ->
         Column(
             modifier = Modifier

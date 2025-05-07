@@ -1,24 +1,21 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package com.imani.unmasked.ui.theme.Screens.Profile
 
-
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import coil.compose.rememberAsyncImagePainter
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -26,6 +23,7 @@ import com.imani.unmasked.data.AuthViewModel
 import com.imani.unmasked.model.Post
 import com.imani.unmasked.ui.theme.Screens.feed.PostItem
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController) {
     val user = Firebase.auth.currentUser
@@ -33,8 +31,23 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
     val userId = user?.uid ?: ""
 
     var posts by remember { mutableStateOf<List<Post>>(emptyList()) }
+    var name by remember { mutableStateOf("") }
+    var bio by remember { mutableStateOf("") }
+    var profileImageUrl by remember { mutableStateOf("") }
 
-    LaunchedEffect(true) {
+    // Load user profile info
+    LaunchedEffect(userId) {
+        if (userId.isNotEmpty()) {
+            Firebase.firestore.collection("users").document(userId).get().addOnSuccessListener { doc ->
+                name = doc.getString("name") ?: ""
+                bio = doc.getString("bio") ?: ""
+                profileImageUrl = doc.getString("profileImageUrl") ?: ""
+            }
+        }
+    }
+
+    // Load user posts
+    LaunchedEffect(userId) {
         Firebase.firestore.collection("posts")
             .whereEqualTo("userId", userId)
             .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
@@ -56,23 +69,65 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
                             popUpTo("feed") { inclusive = true }
                         }
                     }) {
-                        Icon(Icons.Default.ExitToApp,
-                            contentDescription = "Sign out")
+                        Icon(Icons.Default.ExitToApp, contentDescription = "Sign out")
                     }
                 }
             )
         }
-    ) {
-        Column(modifier = Modifier.padding(it)) {
-            Text(text = "Logged in as: $email",
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(16.dp))
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding)) {
+            Spacer(modifier = Modifier.height(16.dp))
 
-            LazyColumn {
-                items(posts) { post ->
-                    PostItem(post = post)
-                }
+            // Profile Image and Info
+            if (profileImageUrl.isNotEmpty()) {
+                Image(
+                    painter = rememberAsyncImagePainter(profileImageUrl),
+                    contentDescription = "Profile Picture",
+                    modifier = Modifier
+                        .size(100.dp)
+                        .clip(CircleShape)
+                        .align(Alignment.CenterHorizontally)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = name.ifEmpty { "No Name" },
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "Logged in as: $email",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = bio.ifEmpty { "No bio available." },
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Edit Profile Button
+            Button(
+                onClick = { navController.navigate("edit_profile")
+                },
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ) {
+                Text("Edit Profile")
+            }
+
+
             }
         }
     }
-}
+
