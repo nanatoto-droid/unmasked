@@ -7,31 +7,21 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import coil.compose.rememberImagePainter
+import coil.compose.AsyncImage
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
 import com.imani.unmasked.data.AuthViewModel
-
 import java.util.*
 
 @Composable
@@ -45,29 +35,34 @@ fun CreatePostScreen(authViewModel: AuthViewModel, navController: NavHostControl
         imageUri = it
     }
 
-    Scaffold  (
-        topBar = { TopAppBar(title = { Text("New Post") }) },
+    Scaffold(
+        topBar = {
+            TopAppBar(title = { Text("New Post") })
+        },
         floatingActionButton = {
-            FloatingActionButton (
+            FloatingActionButton(
                 onClick = {
-                    if (imageUri != null) {
+                    if (imageUri != null && text.isNotBlank()) {
                         loading = true
                         uploadPost(text, imageUri!!, anonymous) {
                             loading = false
-                            navController.popBackStack() // Go back to feed
+                            navController.popBackStack()
                         }
                     }
                 },
-                enabled = !loading
+                enabled = !loading && imageUri != null && text.isNotBlank()
             ) {
                 Icon(Icons.Default.CheckCircle, contentDescription = "Post")
             }
         }
-    ) {
-        Column(modifier = Modifier
-            .padding(16.dp)
-            .fillMaxSize()) {
-
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(16.dp)
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.Top
+        ) {
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
@@ -77,15 +72,15 @@ fun CreatePostScreen(authViewModel: AuthViewModel, navController: NavHostControl
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Button (onClick = { launcher.launch("image/*") }) {
+            Button(onClick = { launcher.launch("image/*") }) {
                 Text("Pick Image")
             }
 
             imageUri?.let {
                 Spacer(modifier = Modifier.height(16.dp))
-                Image(
-                    painter = rememberImagePainter(it),
-                    contentDescription = null,
+                AsyncImage(
+                    model = it,
+                    contentDescription = "Selected image",
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp)
@@ -94,9 +89,16 @@ fun CreatePostScreen(authViewModel: AuthViewModel, navController: NavHostControl
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Checkbox(checked = anonymous, onCheckedChange = { anonymous = it })
                 Text(text = "Post Anonymously")
+            }
+
+            if (loading) {
+                Spacer(modifier = Modifier.height(16.dp))
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
         }
     }
@@ -108,20 +110,21 @@ fun uploadPost(text: String, imageUri: Uri, anonymous: Boolean, onComplete: () -
     val userId = user?.uid ?: ""
 
     val storageRef = Firebase.storage.reference.child("posts/${UUID.randomUUID()}.jpg")
-    storageRef.putFile(imageUri).addOnSuccessListener {
-        storageRef.downloadUrl.addOnSuccessListener { downloadUrl ->
-            val post = hashMapOf(
-                "userId" to userId,
-                "username" to username,
-                "imageUrl" to downloadUrl.toString(),
-                "text" to text,
-                "timestamp" to Timestamp.now().seconds,
-                "anonymous" to anonymous
-            )
-            Firebase.firestore.collection("posts").add(post).addOnSuccessListener {
-                onComplete()
+    storageRef.putFile(imageUri)
+        .addOnSuccessListener {
+            storageRef.downloadUrl.addOnSuccessListener { downloadUrl ->
+                val post = hashMapOf(
+                    "userId" to userId,
+                    "username" to username,
+                    "imageUrl" to downloadUrl.toString(),
+                    "text" to text,
+                    "timestamp" to Timestamp.now().seconds,
+                    "anonymous" to anonymous,
+                    "likes" to emptyList<String>(),
+                    "comments" to emptyList<Map<String, Any>>()
+                )
+                Firebase.firestore.collection("posts").add(post)
+                    .addOnSuccessListener { onComplete() }
             }
         }
-    }
 }
-

@@ -27,7 +27,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val navController = rememberNavController()
-            val user by authViewModel.currentUser.collectAsState()
+            val user = viewModel.userState.value
+
             val postViewModel = PostViewModel()
 
             NavHost(navController = navController, startDestination = if (user != null) "feed" else "auth") {
