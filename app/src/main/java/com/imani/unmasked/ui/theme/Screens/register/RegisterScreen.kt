@@ -19,6 +19,7 @@ import com.imani.unmasked.data.AuthViewModel
 
 @Composable
 fun SignUpScreen(viewModel: AuthViewModel, navController: NavHostController) {
+    var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -64,6 +65,15 @@ fun SignUpScreen(viewModel: AuthViewModel, navController: NavHostController) {
                     text = "Join Our Community",
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Name Field
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Full Name") },
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 

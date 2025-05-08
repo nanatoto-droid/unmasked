@@ -31,15 +31,16 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
     val userId = user?.uid ?: ""
 
     var posts by remember { mutableStateOf<List<Post>>(emptyList()) }
-    var name by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(user?.displayName ?: "") } // Fetch displayName directly
     var bio by remember { mutableStateOf("") }
     var profileImageUrl by remember { mutableStateOf("") }
 
-    // Load user profile info
+    // Load additional user profile info from Firestore (if needed)
     LaunchedEffect(userId) {
         if (userId.isNotEmpty()) {
             Firebase.firestore.collection("users").document(userId).get().addOnSuccessListener { doc ->
-                name = doc.getString("name") ?: ""
+                // Only overwrite name if Firestore name exists
+                name = doc.getString("name") ?: name
                 bio = doc.getString("bio") ?: ""
                 profileImageUrl = doc.getString("profileImageUrl") ?: ""
             }
@@ -95,7 +96,8 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
             Text(
                 text = name.ifEmpty { "No Name" },
                 style = MaterialTheme.typography.headlineSmall,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -103,7 +105,8 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
             Text(
                 text = "Logged in as: $email",
                 style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -119,15 +122,20 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
 
             // Edit Profile Button
             Button(
-                onClick = { navController.navigate("edit_profile")
-                },
+                onClick = { navController.navigate("edit_profile") },
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
                 Text("Edit Profile")
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
 
+            // User's Posts
+            LazyColumn {
+                items(posts.size) { index ->
+                    PostItem(post = posts[index])
+                }
             }
         }
     }
-
+}

@@ -1,14 +1,15 @@
+
 package com.imani.unmasked.model
 
 import androidx.lifecycle.ViewModel
-import com.google.firebase.firestore.FirebaseFirestore
+import androidx.lifecycle.viewModelScope
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-
+import kotlinx.coroutines.launch
 
 class PostViewModel : ViewModel() {
-
-    private val db = FirebaseFirestore.getInstance()
     private val _posts = MutableStateFlow<List<Post>>(emptyList())
     val posts: StateFlow<List<Post>> = _posts
 
@@ -17,12 +18,15 @@ class PostViewModel : ViewModel() {
     }
 
     private fun loadPosts() {
-        db.collection("posts").orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+        Firebase.firestore.collection("posts")
+            .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot != null) {
-                    _posts.value = snapshot.documents.mapNotNull { it.toObject(Post::class.java)?.copy(id = it.id) }
+                    val postsList = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(Post::class.java)
+                    }
+                    _posts.value = postsList
                 }
             }
     }
 }
-
