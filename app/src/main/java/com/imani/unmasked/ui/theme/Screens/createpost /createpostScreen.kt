@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,7 +39,16 @@ fun CreatePostScreen(authViewModel: AuthViewModel, navController: NavHostControl
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("New Post") })
+            TopAppBar(title = { Text("New Post") },
+                navigationIcon = {
+                    IconButton(onClick = {
+                        navController.navigate("feed") {
+                            popUpTo("profile") { inclusive = true }
+                        }
+                    }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back to feed")
+                    }
+                }, )
         },
         floatingActionButton = {
             FloatingActionButton(

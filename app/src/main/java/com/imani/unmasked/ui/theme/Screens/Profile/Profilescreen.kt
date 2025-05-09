@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -63,6 +64,15 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
         topBar = {
             TopAppBar(
                 title = { Text("Profile") },
+                navigationIcon = {
+                    IconButton(onClick = {
+                        navController.navigate("feed") {
+                            popUpTo("profile") { inclusive = true }
+                        }
+                    }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back to feed")
+                    }
+                },
                 actions = {
                     IconButton(onClick = {
                         authViewModel.signOut()
@@ -94,7 +104,7 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = name.ifEmpty { "No Name" },
+                text = " $name",
                 style = MaterialTheme.typography.headlineSmall,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
