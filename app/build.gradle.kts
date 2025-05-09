@@ -47,6 +47,7 @@ android {
 dependencies {
     // Compose dependencies
     implementation (libs.ui)
+    implementation (libs.material3)
     implementation(libs.material)
     implementation (libs.androidx.navigation.compose)
     implementation (libs.androidx.lifecycle.runtime.ktx.v270)
