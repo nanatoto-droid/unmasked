@@ -5,8 +5,8 @@ package com.imani.unmasked.ui.theme.Screens.createpost
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
-import com.google.firebase.Timestamp
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -48,17 +47,18 @@ fun CreatePostScreen(authViewModel: AuthViewModel, navController: NavHostControl
                     }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back to feed")
                     }
-                }, )
+                })
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    if (!loading && imageUri != null && text.isNotBlank()) {
+                    if (!loading && text.isNotBlank()) {
                         loading = true
-                        uploadPost(text, imageUri!!, anonymous,
-                            onProgress = { progress ->
-                                uploadProgress = progress
-                            },
+                        uploadPost(
+                            text = text,
+                            imageUri = imageUri,
+                            anonymous = anonymous,
+                            onProgress = { progress -> uploadProgress = progress },
                             onComplete = {
                                 loading = false
                                 navController.popBackStack()
@@ -70,7 +70,7 @@ fun CreatePostScreen(authViewModel: AuthViewModel, navController: NavHostControl
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = "Post",
-                    tint = if (!loading && imageUri != null && text.isNotBlank())
+                    tint = if (!loading && text.isNotBlank())
                         MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                 )
@@ -95,7 +95,7 @@ fun CreatePostScreen(authViewModel: AuthViewModel, navController: NavHostControl
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(onClick = { launcher.launch("image/*") }) {
-                Text("Pick Image")
+                Text("Pick Image (Optional)")
             }
 
             imageUri?.let {
@@ -130,10 +130,9 @@ fun CreatePostScreen(authViewModel: AuthViewModel, navController: NavHostControl
     }
 }
 
-
 fun uploadPost(
     text: String,
-    imageUri: Uri,
+    imageUri: Uri?, // Now nullable
     anonymous: Boolean,
     onProgress: (Double) -> Unit,
     onComplete: () -> Unit
@@ -142,31 +141,47 @@ fun uploadPost(
     val username = user?.email ?: "Unknown"
     val userId = user?.uid ?: ""
 
-    val storageRef = Firebase.storage.reference.child("posts/${UUID.randomUUID()}.jpg")
-    val uploadTask = storageRef.putFile(imageUri)
+    if (imageUri != null) {
+        val storageRef = Firebase.storage.reference.child("posts/${UUID.randomUUID()}.jpg")
+        val uploadTask = storageRef.putFile(imageUri)
 
-    // Listen for progress
-    uploadTask.addOnProgressListener { taskSnapshot ->
-        val progress = 100.0 * taskSnapshot.bytesTransferred / taskSnapshot.totalByteCount
-        onProgress(progress)
-    }.addOnSuccessListener {
-        storageRef.downloadUrl.addOnSuccessListener { downloadUrl ->
-            val post = hashMapOf(
-                "userId" to userId,
-                "username" to username,
-                "imageUrl" to downloadUrl.toString(),
-                "text" to text,
-                "timestamp" to System.currentTimeMillis() / 1000,
-                "anonymous" to anonymous,
-                "likes" to emptyList<String>(),
-                "comments" to emptyList<Map<String, Any>>()
-            )
-            val postsRef = Firebase.firestore.collection("posts")
-            postsRef.add(post)
-                .addOnSuccessListener { docRef ->
-                    docRef.update("id", docRef.id)
-                    onComplete()
-                }
+        uploadTask.addOnProgressListener { taskSnapshot ->
+            val progress = 100.0 * taskSnapshot.bytesTransferred / taskSnapshot.totalByteCount
+            onProgress(progress)
+        }.addOnSuccessListener {
+            storageRef.downloadUrl.addOnSuccessListener { downloadUrl ->
+                savePostToFirestore(
+                    userId, username, text, downloadUrl.toString(), anonymous, onComplete
+                )
+            }
         }
+    } else {
+        // No image selected
+        savePostToFirestore(userId, username, text, null, anonymous, onComplete)
+    }
+}
+
+private fun savePostToFirestore(
+    userId: String,
+    username: String,
+    text: String,
+    imageUrl: String?,
+    anonymous: Boolean,
+    onComplete: () -> Unit
+) {
+    val post = hashMapOf(
+        "userId" to userId,
+        "username" to username,
+        "imageUrl" to imageUrl, // nullable
+        "text" to text,
+        "timestamp" to System.currentTimeMillis() / 1000,
+        "anonymous" to anonymous,
+        "likes" to emptyList<String>(),
+        "comments" to emptyList<Map<String, Any>>()
+    )
+    val postsRef = Firebase.firestore.collection("posts")
+    postsRef.add(post).addOnSuccessListener { docRef ->
+        docRef.update("id", docRef.id)
+        onComplete()
     }
 }
