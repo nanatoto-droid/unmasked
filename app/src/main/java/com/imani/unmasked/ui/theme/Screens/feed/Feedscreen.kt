@@ -2,6 +2,7 @@ package com.imani.unmasked.ui.theme.Screens.feed
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,17 +11,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
-
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -33,7 +35,6 @@ import com.imani.unmasked.R
 import com.imani.unmasked.data.AuthViewModel
 import com.imani.unmasked.model.Post
 import com.imani.unmasked.model.PostViewModel
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -60,6 +61,16 @@ fun FeedScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Unmasked")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        authViewModel.signOut()
+                        navController.navigate("auth") {
+                            popUpTo("feed") { inclusive = true }
+                        }
+                    }) {
+                        Icon(Icons.Default.ExitToApp, contentDescription = "Sign out")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
@@ -97,11 +108,26 @@ fun FeedScreen(
             }
         }
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier.padding(innerPadding)
-        ) {
-            items(posts) { post ->
-                PostItem(post = post)
+
+        Box(modifier = Modifier.fillMaxSize()) {
+
+            // Background Image
+            Image(
+                painter = painterResource(id = R.drawable.back5),
+                contentDescription = "Background",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+
+            // Post list over the background
+            LazyColumn(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .padding(bottom = 60.dp) // for nav bar space
+            ) {
+                items(posts) { post ->
+                    PostItem(post = post)
+                }
             }
         }
     }
@@ -121,7 +147,7 @@ fun PostItem(post: Post) {
             .padding(12.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp)),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.8f)),
         elevation = CardDefaults.cardElevation(8.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -153,13 +179,14 @@ fun PostItem(post: Post) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
+                    .clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop
             )
 
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = post.text)
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Like button row
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = {
                     toggleLike(post.id, userId, liked)
@@ -167,22 +194,18 @@ fun PostItem(post: Post) {
                     likeCount += if (liked) 1 else -1
                 }) {
                     Icon(
-                        imageVector = if (liked) Icons.Filled.Favorite
-                        else Icons.Filled.FavoriteBorder,
+                        imageVector = if (liked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                         contentDescription = "Like"
                     )
                 }
                 Text(text = "$likeCount likes")
             }
 
-            // Comments
             post.comments.forEach {
-                val displayName = if (post.anonymous) "Anonymous"
-                else it.username
+                val displayName = if (post.anonymous) "Anonymous" else it.username
                 Text(text = "$displayName: ${it.text}")
             }
 
-            // Add comment
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = commentText,

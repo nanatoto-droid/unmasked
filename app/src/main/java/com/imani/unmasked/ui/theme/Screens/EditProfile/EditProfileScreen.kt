@@ -4,8 +4,10 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -13,14 +15,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
+import com.imani.unmasked.R
 import kotlinx.coroutines.tasks.await
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,114 +40,132 @@ fun EditProfileScreen(navController: NavHostController) {
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var isUploading by remember { mutableStateOf(false) }
 
-    // Load existing profile data
     LaunchedEffect(userId) {
         if (userId.isNotEmpty()) {
-            Firebase.firestore.collection("users").document(userId).get().addOnSuccessListener { doc ->
-                name = TextFieldValue(doc.getString("name") ?: "")
-                bio = TextFieldValue(doc.getString("bio") ?: "")
-                profileImageUrl = doc.getString("profileImageUrl") ?: ""
-            }
+            val doc = Firebase.firestore.collection("users").document(userId).get().await()
+            name = TextFieldValue(doc.getString("name") ?: "")
+            bio = TextFieldValue(doc.getString("bio") ?: "")
+            profileImageUrl = doc.getString("profileImageUrl") ?: ""
         }
     }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let {
-            selectedImageUri = it
-        }
+        uri?.let { selectedImageUri = it }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Edit Profile") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+    Box(modifier = Modifier.fillMaxSize()) {
+
+        // Background image
+        Image(
+            painter = painterResource(id = R.drawable.bg2),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.6f),
+            topBar = {
+                TopAppBar(
+                    title = { Text("Edit Profile") },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                )
+            },
+            modifier = Modifier.fillMaxSize()
+        ) { paddingValues ->
+
+            Column(
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .padding(16.dp)
+                    .fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+
+                val imagePainter = rememberAsyncImagePainter(selectedImageUri ?: profileImageUrl)
+                Image(
+                    painter = imagePainter,
+                    contentDescription = "Profile Image",
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(CircleShape)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(onClick = { imagePickerLauncher.launch("image/*") }) {
+                    Text("Pick Image")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Name:")
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                        )
+
+                        Text("Bio:")
+                        OutlinedTextField(
+                            value = bio,
+                            onValueChange = { bio = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                        )
                     }
                 }
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .padding(16.dp)
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
 
-            // Profile Image
-            val imagePainter = rememberAsyncImagePainter(
-                selectedImageUri ?: profileImageUrl
-            )
-            Image(
-                painter = imagePainter,
-                contentDescription = "Profile Image",
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-            )
+                Spacer(modifier = Modifier.height(16.dp))
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Pick Image Button
-            Button(onClick = {
-                imagePickerLauncher.launch("image/*")
-            }) {
-                Text("Pick Image")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Name Field
-            Text("Name:")
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Bio Field
-            Text("Bio:")
-            OutlinedTextField(
-                value = bio,
-                onValueChange = { bio = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Save Button
-            Button(
-                onClick = {
-                    if (selectedImageUri != null) {
+                Button(
+                    onClick = {
                         isUploading = true
-                        // Upload image first
-                        uploadImageToFirebase(selectedImageUri!!, userId) { downloadUrl ->
-                            profileImageUrl = downloadUrl
+                        if (selectedImageUri != null) {
+                            uploadImageToFirebase(selectedImageUri!!, userId) { downloadUrl ->
+                                profileImageUrl = downloadUrl
+                                saveProfile(userId, name.text, bio.text, profileImageUrl)
+                                isUploading = false
+
+                                navController.previousBackStackEntry
+                                    ?.savedStateHandle
+                                    ?.set("shouldReload", true)
+
+                                navController.popBackStack()
+                            }
+                        } else {
                             saveProfile(userId, name.text, bio.text, profileImageUrl)
                             isUploading = false
+
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set("shouldReload", true)
+
                             navController.popBackStack()
                         }
-                    } else {
-                        // No new image selected, just save other fields
-                        saveProfile(userId, name.text, bio.text, profileImageUrl)
-                        navController.popBackStack()
-                    }
-                },
-                enabled = !isUploading,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (isUploading) "Uploading..." else "Save Changes")
+                    },
+                    enabled = !isUploading,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (isUploading) "Uploading..." else "Save Changes")
+                }
             }
         }
     }
@@ -167,7 +190,5 @@ fun uploadImageToFirebase(imageUri: Uri, userId: String, onSuccess: (String) -> 
             }
             storageRef.downloadUrl
         }
-        .addOnSuccessListener { uri ->
-            onSuccess(uri.toString())
-        }
+        .addOnSuccessListener { uri -> onSuccess(uri.toString()) }
 }

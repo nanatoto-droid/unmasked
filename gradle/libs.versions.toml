@@ -3,6 +3,7 @@ accompanistSwiperefresh = "0.28.0"
 activityComposeVersion = "1.8.2"
 agp = "8.9.2"
 coilCompose = "2.7.0"
+googleServices = "4.4.2"
 imagepicker = "2.1"
 kotlin = "2.0.21"
 coreKtx = "1.16.0"
@@ -31,6 +32,7 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 androidx-lifecycle-runtime-ktx-v270 = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtxVersion" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
+google-services = { module = "com.google.gms:google-services", version.ref = "googleServices" }
 imagepicker = { module = "com.github.dhaval2404:imagepicker", version.ref = "imagepicker" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
