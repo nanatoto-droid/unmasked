@@ -1,7 +1,6 @@
 package com.imani.unmasked.ui.theme.Screens.Profile
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,6 +23,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import coil.compose.rememberAsyncImagePainter
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -37,32 +37,53 @@ import kotlinx.coroutines.tasks.await
 @Composable
 fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController) {
     val user = Firebase.auth.currentUser
-    val email = user?.email ?: "Unknown"
-    val userId = user?.uid ?: ""
+    val userId = user?.uid.orEmpty()
 
-    var posts by remember { mutableStateOf<List<Post>>(emptyList()) }
     var name by remember { mutableStateOf(user?.displayName ?: "") }
     var bio by remember { mutableStateOf("") }
     var profileImageUrl by remember { mutableStateOf("") }
+    var posts by remember { mutableStateOf(emptyList<Post>()) }
+
+    val email = user?.email ?: "Unknown"
+    val currentBackStackEntry = navController.currentBackStackEntryAsState().value
+    val shouldReload = currentBackStackEntry?.savedStateHandle?.get<Boolean>("shouldReload") ?: false
 
     var reloadKey by remember { mutableStateOf(0) }
 
+    // Fetch user profile info
     LaunchedEffect(userId, reloadKey) {
         if (userId.isNotEmpty()) {
             val doc = Firebase.firestore.collection("users").document(userId).get().await()
             name = doc.getString("name") ?: name
             bio = doc.getString("bio") ?: ""
             profileImageUrl = doc.getString("profileImageUrl") ?: ""
+        }
+    }
 
-            Firebase.firestore.collection("posts")
+    // Observe posts
+    DisposableEffect(userId) {
+        var registration: ListenerRegistration? = null
+        if (userId.isNotEmpty()) {
+            registration = Firebase.firestore.collection("posts")
                 .whereEqualTo("userId", userId)
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .addSnapshotListener { snapshot, _ ->
                     if (snapshot != null) {
-                        posts = snapshot.documents.mapNotNull { it.toObject(Post::class.java)?.copy(id = it.id) }
+                        posts = snapshot.documents.mapNotNull {
+                            it.toObject(Post::class.java)?.copy(id = it.id)
+                        }
                     }
                 }
         }
+
+        onDispose {
+            registration?.remove()
+        }
+    }
+
+    if (shouldReload) {
+        reloadKey++
+        currentBackStackEntry?.savedStateHandle?.set("shouldReload", false)
     }
 
     Scaffold(
@@ -75,7 +96,7 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
                             popUpTo("profile") { inclusive = true }
                         }
                     }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back to feed")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
@@ -85,7 +106,7 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
                             popUpTo("feed") { inclusive = true }
                         }
                     }) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Sign out")
+                        Icon(Icons.Default.ExitToApp, contentDescription = "Logout")
                     }
                 }
             )
@@ -93,9 +114,9 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
     ) { padding ->
 
         Box(modifier = Modifier.fillMaxSize()) {
-            // Background image
+            // Background
             Image(
-                painter = painterResource(id = R.drawable.bg1),
+                painter = painterResource(R.drawable.bg1),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().zIndex(-1f)
@@ -112,7 +133,9 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
 
                     Card(
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                        ),
                         modifier = Modifier
                             .padding(16.dp)
                             .fillMaxWidth()
@@ -121,7 +144,6 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
                             modifier = Modifier.padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-
                             if (profileImageUrl.isNotEmpty()) {
                                 Image(
                                     painter = rememberAsyncImagePainter(profileImageUrl),
@@ -141,8 +163,6 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
                                 modifier = Modifier.fillMaxWidth()
                             )
 
-                            Spacer(modifier = Modifier.height(4.dp))
-
                             Text(
                                 text = "Logged in as: $email",
                                 style = MaterialTheme.typography.bodyMedium,
@@ -153,7 +173,7 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
                             Spacer(modifier = Modifier.height(8.dp))
 
                             Text(
-                                text = bio.ifEmpty { "No bio available." },
+                                text = if (bio.isNotEmpty()) bio else "No bio available.",
                                 style = MaterialTheme.typography.bodySmall,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.padding(horizontal = 16.dp)
@@ -161,12 +181,10 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
 
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            Button(
-                                onClick = {
-                                    navController.currentBackStackEntry?.savedStateHandle?.set("shouldReload", false)
-                                    navController.navigate("edit_profile")
-                                }
-                            ) {
+                            Button(onClick = {
+                                navController.currentBackStackEntry?.savedStateHandle?.set("shouldReload", false)
+                                navController.navigate("edit_profile")
+                            }) {
                                 Text("Edit Profile")
                             }
                         }
@@ -178,13 +196,5 @@ fun ProfileScreen(authViewModel: AuthViewModel, navController: NavHostController
                 }
             }
         }
-    }
-
-    val currentBackStackEntry = navController.currentBackStackEntryAsState().value
-    val shouldReload = currentBackStackEntry?.savedStateHandle?.get<Boolean>("shouldReload") ?: false
-
-    if (shouldReload) {
-        reloadKey++
-        currentBackStackEntry?.savedStateHandle?.set("shouldReload", false)
     }
 }
